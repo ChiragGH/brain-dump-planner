@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain-Dump Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --panel: #1c1c1c;
+            --panel-soft: #141414;
+            --line: #2b2b2b;
+            --text: #eef2ff;
+            --muted: #96a1c7;
+            --accent: #4169e1;
+            --accent-bright: #5c7cff;
+            --accent-shadow: rgba(65, 105, 225, 0.4);
+            --ok: #2dd4bf;
+            --danger: #fb7185;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Inter", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1200px 600px at -10% -20%, rgba(65, 105, 225, 0.25), transparent 60%),
+                radial-gradient(900px 500px at 120% 120%, rgba(22, 34, 80, 0.4), transparent 65%),
+                var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .app {
+            width: min(1000px, 100%);
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            background: linear-gradient(160deg, rgba(28, 28, 28, 0.96), rgba(14, 14, 14, 0.98));
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(65, 105, 225, 0.12);
+            overflow: hidden;
+            animation: rise 0.55s ease;
+        }
+
+        .top {
+            padding: 28px 28px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+            font-weight: 800;
+            letter-spacing: 0.2px;
+        }
+
+        .sub {
+            margin: 10px 0 0;
+            color: var(--muted);
+            line-height: 1.5;
+            max-width: 740px;
+            font-size: 0.96rem;
+        }
+
+        .workspace {
+            padding: 20px 28px 30px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .input-wrap {
+            background: linear-gradient(180deg, rgba(20, 20, 20, 0.94), rgba(14, 14, 14, 0.98));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 220px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            background: var(--panel-soft);
+            color: var(--text);
+            font-size: 1rem;
+            line-height: 1.55;
+            padding: 14px 14px 16px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.16);
+        }
+
+        .actions {
+            margin-top: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            border-radius: 12px;
+            background: linear-gradient(140deg, var(--accent), var(--accent-bright));
+            color: white;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.2px;
+            padding: 12px 18px;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+            box-shadow: 0 10px 24px var(--accent-shadow);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px var(--accent-shadow);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .status {
+            min-height: 1.2rem;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .status.error {
+            color: var(--danger);
+        }
+
+        .status.success {
+            color: var(--ok);
+        }
+
+        .results {
+            background: rgba(12, 12, 12, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .results-title {
+            margin: 0;
+            font-size: 1.06rem;
+            font-weight: 700;
+        }
+
+        .results-meta {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .slot {
+            background: linear-gradient(180deg, rgba(28, 28, 28, 0.85), rgba(18, 18, 18, 0.9));
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 12px;
+            animation: fadeIn 0.45s ease;
+        }
+
+        .slot-head {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .slot-count {
+            background: rgba(65, 105, 225, 0.2);
+            border: 1px solid rgba(65, 105, 225, 0.45);
+            color: #d7e1ff;
+            border-radius: 999px;
+            min-width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0 7px;
+        }
+
+        .task-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 8px;
+        }
+
+        .task-item {
+            display: grid;
+            grid-template-columns: 22px 1fr;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.24);
+            transition: border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .task-item:hover {
+            border-color: rgba(65, 105, 225, 0.5);
+            background: rgba(65, 105, 225, 0.07);
+        }
+
+        .task-toggle {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .check {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 1.5px solid rgba(255, 255, 255, 0.28);
+            background: #111;
+            position: relative;
+            margin-top: 1px;
+            transition: all 0.18s ease;
+        }
+
+        .check::after {
+            content: "";
+            position: absolute;
+            width: 6px;
+            height: 11px;
+            border: solid #fff;
+            border-width: 0 2px 2px 0;
+            left: 7px;
+            top: 3px;
+            transform: rotate(45deg) scale(0);
+            transition: transform 0.16s ease;
+        }
+
+        .task-toggle:checked + .check {
+            border-color: var(--accent);
+            background: var(--accent);
+            box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.2);
+        }
+
+        .task-toggle:checked + .check::after {
+            transform: rotate(45deg) scale(1);
+        }
+
+        .task-main {
+            min-width: 0;
+        }
+
+        .task-title {
+            margin: 0;
+            font-size: 0.92rem;
+            font-weight: 600;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .task-meta {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
+        .task-toggle:checked ~ .task-main .task-title,
+        .task-toggle:checked ~ .task-main .task-meta {
+            opacity: 0.66;
+            text-decoration: line-through;
+        }
+
+        .empty {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.86rem;
+            padding: 8px;
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .timeline {
+                grid-template-columns: 1fr;
+            }
+
+            .top,
+            .workspace {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            textarea {
+                min-height: 190px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <section class="top">
+            <h1>Brain-Dump Planner</h1>
+            <p class="sub">Drop your messy thoughts in Hindi, English, or Hinglish. The planner will transform them into a sharp, execution-ready timeline.</p>
+        </section>
+
+        <section class="workspace">
+            <div class="input-wrap">
+                <textarea id="brainDump" placeholder="Example: Kal subah 7 baje gym, then send investor email, college assignment finish karna, rent transfer, and evening me product UI bug fix..."></textarea>
+
+                <div class="actions">
+                    <button id="organizeBtn" type="button">Organize My Day</button>
+                    <span class="hint">Tip: Press Ctrl + Enter to submit</span>
+                </div>
+
+                <p id="status" class="status" role="status" aria-live="polite"></p>
+            </div>
+
+            <section id="results" class="results" hidden>
+                <div class="results-header">
+                    <h2 class="results-title">Structured Day Plan</h2>
+                    <p id="resultMeta" class="results-meta"></p>
+                </div>
+
+                <div class="timeline">
+                    <article class="slot">
+                        <div class="slot-head">
+                            <span>Morning</span>
+                            <span id="countMorning" class="slot-count">0</span>
+                        </div>
+                        <ul id="listMorning" class="task-list"></ul>
+                    </article>
+
+                    <article class="slot">
+                        <div class="slot-head">
+                            <span>Afternoon</span>
+                            <span id="countAfternoon" class="slot-count">0</span>
+                        </div>
+                        <ul id="listAfternoon" class="task-list"></ul>
+                    </article>
+
+                    <article class="slot">
+                        <div class="slot-head">
+                            <span>Evening</span>
+                            <span id="countEvening" class="slot-count">0</span>
+                        </div>
+                        <ul id="listEvening" class="task-list"></ul>
+                    </article>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const textArea = document.getElementById("brainDump");
+        const button = document.getElementById("organizeBtn");
+        const statusEl = document.getElementById("status");
+        const resultsEl = document.getElementById("results");
+        const resultMetaEl = document.getElementById("resultMeta");
+
+        const lists = {
+            Morning: document.getElementById("listMorning"),
+            Afternoon: document.getElementById("listAfternoon"),
+            Evening: document.getElementById("listEvening")
+        };
+
+        const counts = {
+            Morning: document.getElementById("countMorning"),
+            Afternoon: document.getElementById("countAfternoon"),
+            Evening: document.getElementById("countEvening")
+        };
+
+        function normalizeTime(value) {
+            const raw = String(value || "").toLowerCase();
+            if (raw.includes("morn")) return "Morning";
+            if (raw.includes("eve") || raw.includes("night")) return "Evening";
+            return "Afternoon";
+        }
+
+        function setStatus(message, mode = "normal") {
+            statusEl.textContent = message;
+            statusEl.classList.remove("error", "success");
+
+            if (mode === "error") {
+                statusEl.classList.add("error");
+            }
+            if (mode === "success") {
+                statusEl.classList.add("success");
+            }
+        }
+
+        function setLoading(isLoading) {
+            button.disabled = isLoading;
+            button.textContent = isLoading ? "Organizing..." : "Organize My Day";
+        }
+
+        function clearBoard() {
+            Object.values(lists).forEach((list) => {
+                list.innerHTML = "";
+            });
+
+            Object.values(counts).forEach((counter) => {
+                counter.textContent = "0";
+            });
+
+            resultMetaEl.textContent = "";
+        }
+
+        function addEmptyStateIfNeeded(bucket) {
+            if (!lists[bucket].children.length) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = "No tasks";
+                lists[bucket].appendChild(empty);
+            }
+        }
+
+        function createTaskNode(task, index) {
+            const item = document.createElement("li");
+            item.className = "task-item";
+
+            const uniqueId = "task-" + Date.now() + "-" + index;
+
+            const toggle = document.createElement("input");
+            toggle.type = "checkbox";
+            toggle.className = "task-toggle";
+            toggle.id = uniqueId;
+
+            const check = document.createElement("label");
+            check.className = "check";
+            check.setAttribute("for", uniqueId);
+
+            const content = document.createElement("div");
+            content.className = "task-main";
+
+            const title = document.createElement("p");
+            title.className = "task-title";
+            title.textContent = task.title;
+
+            const categoryText = task.category ? "Category: " + task.category : "Category: General";
+            const notesText = task.notes ? " | " + task.notes : "";
+
+            const meta = document.createElement("p");
+            meta.className = "task-meta";
+            meta.textContent = categoryText + notesText;
+
+            content.appendChild(title);
+            content.appendChild(meta);
+
+            item.appendChild(toggle);
+            item.appendChild(check);
+            item.appendChild(content);
+
+            return item;
+        }
+
+        function renderTasks(tasks) {
+            clearBoard();
+            const counter = { Morning: 0, Afternoon: 0, Evening: 0 };
+
+            tasks.forEach((task, idx) => {
+                const bucket = normalizeTime(task.time_of_day);
+                counter[bucket] += 1;
+                lists[bucket].appendChild(createTaskNode(task, idx));
+            });
+
+            Object.keys(counter).forEach((bucket) => {
+                counts[bucket].textContent = String(counter[bucket]);
+                addEmptyStateIfNeeded(bucket);
+            });
+
+            resultMetaEl.textContent = String(tasks.length) + " tasks extracted";
+            resultsEl.hidden = false;
+        }
+
+        async function organizeDay() {
+            const text = textArea.value.trim();
+            if (!text) {
+                setStatus("Please add your raw thoughts first.", "error");
+                return;
+            }
+
+            setLoading(true);
+            setStatus("Analyzing and structuring your day...");
+
+            try {
+                const response = await fetch("/api/organize", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const message = data.error || "Unable to organize your day right now.";
+                    throw new Error(message);
+                }
+
+                const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+                if (!tasks.length) {
+                    throw new Error("No actionable tasks were found in your dump.");
+                }
+
+                renderTasks(tasks);
+                const successMessage = data.sync_message || "Your plan is ready. Stay locked in.";
+                setStatus(successMessage, "success");
+            } catch (error) {
+                resultsEl.hidden = true;
+                setStatus(error.message || "Something went wrong.", "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        button.addEventListener("click", organizeDay);
+
+        textArea.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" && event.ctrlKey) {
+                event.preventDefault();
+                organizeDay();
+            }
+        });
+    </script>
+</body>
+</html>
